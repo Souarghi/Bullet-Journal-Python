@@ -66,7 +66,52 @@ class InvalidStatusTransitionError(BujoError):
 
 
 # =============================================================================
-# 2. CLASSE DE BASE ABSTRAITE : Entry
+# 2. SIGNIFIANTS : Signifier (Niveau 2)
+# =============================================================================
+
+class Signifier(Enum):
+    """Signifiants de la méthode Bullet Journal (Ryder Carroll).
+
+    Symboles officiels :
+    - PRIORITY : * (tâche ou entrée prioritaire / urgente)
+    - IDEA     : ! (idée, réflexion clé, inspiration)
+    """
+
+    PRIORITY = "*"
+    IDEA = "!"
+
+    @property
+    def symbol(self) -> str:
+        """Symbole textuel officiel du signifiant."""
+        return self.value
+
+    @property
+    def label(self) -> str:
+        """Libellé explicatif en français."""
+        if self == Signifier.PRIORITY:
+            return "Prioritaire (*)"
+        return "Idée (!)"
+
+    @classmethod
+    def from_value(cls, val: Signifier | str | None) -> Signifier | None:
+        """Convertit de façon permissive une valeur en Signifier valide."""
+        if val is None or isinstance(val, cls):
+            return val
+        if isinstance(val, str):
+            clean = val.strip()
+            if not clean:
+                return None
+            for member in cls:
+                if clean == member.value or clean.upper() == member.name:
+                    return member
+            raise ValidationError(
+                f"Signifiant invalide : '{val}'. Valeurs acceptées : '*' (PRIORITY), '!' (IDEA)."
+            )
+        raise ValidationError("Le signifiant doit être une instance de Signifier, str ou None.")
+
+
+# =============================================================================
+# 3. CLASSE DE BASE ABSTRAITE : Entry
 # =============================================================================
 
 class Entry(ABC):
@@ -80,6 +125,7 @@ class Entry(ABC):
     - Un horodatage de création (`created_at`).
     - Une date de rattachement au log (`log_date`).
     - Une catégorie ou collection optionnelle (`category`).
+    - Un signifiant optionnel (`signifier`) : * (priorité) ou ! (idée).
     """
 
     def __init__(
@@ -90,6 +136,7 @@ class Entry(ABC):
         category: str | None = None,
         entry_id: str | None = None,
         created_at: datetime | None = None,
+        signifier: Signifier | str | None = None,
     ) -> None:
         """Initialise une nouvelle entrée de journal."""
         # ID unique de 8 caractères hexadécimaux pour identifier sans ambiguïté chaque élément
@@ -98,6 +145,7 @@ class Entry(ABC):
         self._log_date: date = log_date or date.today()
         self._category: str | None = category
         self._description: str = description.strip()
+        self._signifier: Signifier | None = Signifier.from_value(signifier)
 
         # Validation du titre via le setter @title.setter
         self._title: str = ""
@@ -156,6 +204,21 @@ class Entry(ABC):
     def category(self, value: str | None) -> None:
         """Modifie la catégorie."""
         self._category = value.strip() if isinstance(value, str) and value.strip() else None
+
+    @property
+    def signifier(self) -> Signifier | None:
+        """Retourne le signifiant associé (priorité, idée)."""
+        return self._signifier
+
+    @signifier.setter
+    def signifier(self, value: Signifier | str | None) -> None:
+        """Définit ou retire le signifiant avec validation."""
+        self._signifier = Signifier.from_value(value)
+
+    @property
+    def signifier_prefix(self) -> str:
+        """Préfixe pour le Rapid Logging (ex: '* ' ou '! ' ou '')."""
+        return f"{self._signifier.symbol} " if self._signifier else ""
 
     # Méthodes abstraites polymorphes : obligatoires pour chaque sous-classe
     @property
@@ -249,6 +312,8 @@ class Task(Entry):
         entry_id: str | None = None,
         created_at: datetime | None = None,
         status: TaskStatus = TaskStatus.TO_DO,
+        signifier: Signifier | str | None = None,
+        migrated_from_id: str | None = None,
     ) -> None:
         """Initialise une tâche (statut initial À faire par défaut)."""
         super().__init__(
@@ -258,11 +323,16 @@ class Task(Entry):
             category=category,
             entry_id=entry_id,
             created_at=created_at,
+            signifier=signifier,
         )
         self._status: TaskStatus = status
         self._completed_at: datetime | None = None
         if status == TaskStatus.DONE:
             self._completed_at = self.created_at
+
+        # Traçabilité des migrations (Niveau 2)
+        self._migrated_from_id: str | None = migrated_from_id
+        self._migrated_to_id: str | None = None
 
         # Historique de vie : liste de tuples (statut, horodatage)
         self._history: list[tuple[TaskStatus, datetime]] = [(self._status, self.created_at)]
@@ -282,6 +352,21 @@ class Task(Entry):
     def history(self) -> list[tuple[TaskStatus, datetime]]:
         """Retourne l'historique des changements d'état."""
         return list(self._history)
+
+    @property
+    def migrated_from_id(self) -> str | None:
+        """ID de la tâche parente dont cette tâche est issue par migration."""
+        return self._migrated_from_id
+
+    @property
+    def migrated_to_id(self) -> str | None:
+        """ID de la nouvelle tâche vers laquelle cette tâche a été migrée."""
+        return self._migrated_to_id
+
+    @migrated_to_id.setter
+    def migrated_to_id(self, value: str | None) -> None:
+        """Associe l'ID de la tâche cible lors d'une migration."""
+        self._migrated_to_id = value
 
     @property
     def symbol(self) -> str:
@@ -367,9 +452,9 @@ class Task(Entry):
         self._transition_to(TaskStatus.TO_DO)
 
     def display(self) -> str:
-        """Affichage avec symbole BuJo (ex: • [id] Acheter du pain)."""
+        """Affichage avec symbole BuJo et signifiant éventuel (ex: * • [id] Acheter du pain)."""
         desc = f" - {self.description}" if self.description else ""
-        return f"{self.symbol} [{self.id}] {self.title}{desc}"
+        return f"{self.signifier_prefix}{self.symbol} [{self.id}] {self.title}{desc}"
 
 
 # =============================================================================
@@ -390,6 +475,7 @@ class Event(Entry):
         category: str | None = None,
         entry_id: str | None = None,
         created_at: datetime | None = None,
+        signifier: Signifier | str | None = None,
     ) -> None:
         """Initialise un événement."""
         if not isinstance(event_date, date):
@@ -405,6 +491,7 @@ class Event(Entry):
             category=category,
             entry_id=entry_id,
             created_at=created_at,
+            signifier=signifier,
         )
         self._event_date: date = event_date
         self._event_time: time | None = event_time
@@ -451,8 +538,8 @@ class Event(Entry):
         return "○"
 
     def display(self) -> str:
-        """Rendu textuel d'un événement (ex: ○ [id] Réunion (14:30) @ Salle B204)."""
-        parts = [f"{self.symbol} [{self.id}] {self.title}"]
+        """Rendu textuel d'un événement (ex: * ○ [id] Réunion (14:30) @ Salle B204)."""
+        parts = [f"{self.signifier_prefix}{self.symbol} [{self.id}] {self.title}"]
         time_str = f" à {self.event_time.strftime('%H:%M')}" if self.event_time else ""
         date_str = f" ({self.event_date.strftime('%Y-%m-%d')}{time_str})"
         parts.append(date_str)
@@ -478,6 +565,7 @@ class Note(Entry):
         category: str | None = None,
         entry_id: str | None = None,
         created_at: datetime | None = None,
+        signifier: Signifier | str | None = None,
     ) -> None:
         """Initialise une note."""
         super().__init__(
@@ -487,6 +575,7 @@ class Note(Entry):
             category=category,
             entry_id=entry_id,
             created_at=created_at,
+            signifier=signifier,
         )
         logger.debug("Note créée : id=%s, titre=%r", self.id, self.title)
 
@@ -506,6 +595,6 @@ class Note(Entry):
         return "–"
 
     def display(self) -> str:
-        """Rendu textuel d'une note (ex: – [id] Idée de lecture)."""
+        """Rendu textuel d'une note (ex: ! – [id] Idée de lecture)."""
         desc = f" - {self.description}" if self.description else ""
-        return f"{self.symbol} [{self.id}] {self.title}{desc}"
+        return f"{self.signifier_prefix}{self.symbol} [{self.id}] {self.title}{desc}"

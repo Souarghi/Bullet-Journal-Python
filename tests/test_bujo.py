@@ -19,7 +19,9 @@ from bujo import (
     EntryNotFoundError,
     Event,
     InvalidStatusTransitionError,
+    MonthlyLog,
     Note,
+    Signifier,
     Task,
     TaskStatus,
     ValidationError,
@@ -416,3 +418,264 @@ def test_logging_generates_debug_and_error_files(tmp_path: Path) -> None:
 
     assert "Tâche créée" in debug_content or "Initialisation" in debug_content
     assert "Tentative interdite" in errors_content
+
+
+# =============================================================================
+# 5. TESTS DES SIGNIFIANTS (NIVEAU 2)
+# =============================================================================
+
+class TestSignifiers:
+    """Vérifie la gestion des signifiants (priorité, idée) de Ryder Carroll."""
+
+    def test_signifier_enum_properties(self) -> None:
+        """Contrôle les symboles et libellés des signifiants."""
+        assert Signifier.PRIORITY.symbol == "*"
+        assert Signifier.IDEA.symbol == "!"
+        assert "Prioritaire" in Signifier.PRIORITY.label
+        assert "Idée" in Signifier.IDEA.label
+
+    def test_signifier_from_value_conversion(self) -> None:
+        """from_value convertit correctement chaînes, enums et None."""
+        assert Signifier.from_value("*") == Signifier.PRIORITY
+        assert Signifier.from_value("!") == Signifier.IDEA
+        assert Signifier.from_value("priority") == Signifier.PRIORITY
+        assert Signifier.from_value("idea") == Signifier.IDEA
+        assert Signifier.from_value(None) is None
+        assert Signifier.from_value("   ") is None
+
+    def test_invalid_signifier_raises_validation_error(self) -> None:
+        """Un signifiant inconnu lève une ValidationError."""
+        with pytest.raises(ValidationError, match="Signifiant invalide"):
+            Signifier.from_value("?")
+
+    def test_task_with_priority_signifier_display(self) -> None:
+        """Une tâche prioritaire affiche le symbole '*' devant sa puce."""
+        task = Task(title="Rapport urgent", signifier=Signifier.PRIORITY)
+        assert task.signifier == Signifier.PRIORITY
+        assert task.signifier_prefix == "* "
+        rendered = task.display()
+        assert rendered.startswith("* • [")
+        assert "Rapport urgent" in rendered
+
+    def test_note_with_idea_signifier_display(self) -> None:
+        """Une note d'inspiration affiche le symbole '!' devant son tiret."""
+        note = Note(title="Idée de startup", signifier="!")
+        assert note.signifier == Signifier.IDEA
+        assert note.signifier_prefix == "! "
+        rendered = note.display()
+        assert rendered.startswith("! – [")
+
+    def test_dynamically_modify_signifier(self) -> None:
+        """Le signifiant d'une tâche peut être modifié ou retiré à la volée."""
+        task = Task(title="Vérifier les serveurs")
+        assert task.signifier is None
+        assert task.signifier_prefix == ""
+
+        task.signifier = "*"
+        assert task.signifier == Signifier.PRIORITY
+        assert task.signifier_prefix == "* "
+
+        task.signifier = None
+        assert task.signifier is None
+        assert task.signifier_prefix == ""
+
+
+# =============================================================================
+# 6. TESTS DU MONTHLY LOG (NIVEAU 2)
+# =============================================================================
+
+class TestMonthlyLog:
+    """Vérifie le fonctionnement de la vue mensuelle (MonthlyLog)."""
+
+    def test_monthly_log_initialization(self) -> None:
+        """Initialisation nominale d'un Monthly Log."""
+        month_log = MonthlyLog(year=2026, month=11)
+        assert month_log.year == 2026
+        assert month_log.month == 11
+        assert "Novembre 2026" in month_log.name
+        assert len(month_log) == 0
+
+    def test_invalid_month_raises_validation_error(self) -> None:
+        """Un mois hors de l'intervalle 1-12 est refusé."""
+        with pytest.raises(ValidationError, match="Mois invalide"):
+            MonthlyLog(year=2026, month=13)
+        with pytest.raises(ValidationError, match="Mois invalide"):
+            MonthlyLog(year=2026, month=0)
+
+    def test_monthly_log_add_task_event_note(self) -> None:
+        """Ajout de différents types d'entrées dans le MonthlyLog."""
+        m_log = MonthlyLog(year=2026, month=11)
+        t = m_log.add_task(title="Objectif du mois", signifier="*")
+        ev = m_log.add_event(title="Séminaire", event_date=date(2026, 11, 15))
+        n = m_log.add_note(title="Bilan intermédiaire")
+
+        assert len(m_log) == 3
+        assert len(m_log.get_tasks()) == 1
+        assert len(m_log.get_events()) == 1
+        assert len(m_log.get_notes()) == 1
+        assert m_log.get_entry(t.id).id == t.id
+        assert ev.event_date == date(2026, 11, 15)
+        assert n.title == "Bilan intermédiaire"
+
+    def test_event_date_mismatch_raises_validation_error(self) -> None:
+        """Un événement dont la date ne correspond pas au mois du log est rejeté."""
+        m_log = MonthlyLog(year=2026, month=11)
+        with pytest.raises(ValidationError, match="ne correspond pas au mois"):
+            m_log.add_event(title="Noël", event_date=date(2026, 12, 25))
+
+    def test_monthly_log_calendar_and_task_views(self) -> None:
+        """Vérifie la génération des pages Calendrier et Tâches."""
+        m_log = MonthlyLog(year=2026, month=11)
+        m_log.add_event(title="Réunion client", event_date=date(2026, 11, 10))
+        m_log.add_task(title="Préparer le bilan", signifier="*")
+
+        cal_view = m_log.calendar_view()
+        assert "Page Calendrier" in cal_view
+        assert "10" in cal_view
+        assert "Réunion client" in cal_view
+
+        task_view = m_log.task_view()
+        assert "Page Tâches" in task_view
+        assert "Préparer le bilan" in task_view
+
+        full_display = m_log.display()
+        assert "Monthly Log" in full_display
+
+    def test_monthly_log_mark_done_and_remove(self) -> None:
+        """Accomplissement et suppression d'une tâche dans le MonthlyLog."""
+        m_log = MonthlyLog(year=2026, month=11)
+        t = m_log.add_task(title="Finir le rapport")
+        assert t.is_pending is True
+
+        m_log.mark_task_done(t.id)
+        assert t.is_done is True
+        assert len(m_log.get_pending_tasks()) == 0
+
+        m_log.remove_entry(t.id)
+        assert len(m_log) == 0
+
+
+# =============================================================================
+# 7. TESTS DES MIGRATIONS DE TÂCHES (NIVEAU 2)
+# =============================================================================
+
+class TestMigration:
+    """Vérifie les mécanismes de migration de tâches quotidiennes et mensuelles."""
+
+    def test_daily_task_migration_nominal(self) -> None:
+        """Migration nominale d'une tâche d'un jour vers le jour suivant."""
+        day1 = DailyLog(log_date=date(2026, 11, 5))
+        day2 = DailyLog(log_date=date(2026, 11, 6))
+
+        t1 = day1.add_task(
+            title="Acheter un livre",
+            description="Édition de poche",
+            category="Personnel",
+            signifier="*",
+        )
+
+        assert t1.status == TaskStatus.TO_DO
+        assert t1.symbol == "•"
+
+        # Exécuter la migration vers day2
+        t2 = day1.migrate_task(t1.id, day2)
+
+        # 1. Vérification de la tâche d'origine : passée en MIGRATED ('>')
+        assert t1.status == TaskStatus.MIGRATED
+        assert t1.symbol == ">"
+        assert t1.migrated_to_id == t2.id
+
+        # 2. Vérification de la tâche cible : nouvelle tâche TO_DO ('•') sur day2
+        assert t2.status == TaskStatus.TO_DO
+        assert t2.symbol == "•"
+        assert t2.title == "Acheter un livre"
+        assert t2.description == "Édition de poche"
+        assert t2.category == "Personnel"
+        assert t2.signifier == Signifier.PRIORITY
+        assert t2.log_date == date(2026, 11, 6)
+        assert t2.migrated_from_id == t1.id
+
+        # Les deux tâches ont des identifiants uniques distincts
+        assert t1.id != t2.id
+        assert len(day1) == 1
+        assert len(day2) == 1
+
+    def test_cannot_migrate_done_or_cancelled_task(self) -> None:
+        """Une tâche terminée ou abandonnée ne peut pas être migrée."""
+        day1 = DailyLog(log_date=date(2026, 11, 5))
+        day2 = DailyLog(log_date=date(2026, 11, 6))
+
+        t_done = day1.add_task(title="Tâche finie")
+        t_done.mark_done()
+
+        with pytest.raises(InvalidStatusTransitionError, match="Impossible de migrer"):
+            day1.migrate_task(t_done.id, day2)
+
+        t_cancelled = day1.add_task(title="Tâche annulée")
+        t_cancelled.mark_cancelled()
+
+        with pytest.raises(InvalidStatusTransitionError, match="Impossible de migrer"):
+            day1.migrate_task(t_cancelled.id, day2)
+
+    def test_daily_batch_migration_pending_tasks(self) -> None:
+        """migrate_pending_tasks migre toutes les tâches non terminées d'un coup."""
+        day1 = DailyLog(log_date=date(2026, 11, 5))
+        day2 = DailyLog(log_date=date(2026, 11, 6))
+
+        t1 = day1.add_task(title="Tâche 1 à faire")
+        t2 = day1.add_task(title="Tâche 2 terminée")
+        t3 = day1.add_task(title="Tâche 3 à faire")
+        t2.mark_done()
+
+        migrated_list = day1.migrate_pending_tasks(day2)
+
+        assert len(migrated_list) == 2
+        assert t1.status == TaskStatus.MIGRATED
+        assert t2.status == TaskStatus.DONE
+        assert t3.status == TaskStatus.MIGRATED
+
+        assert len(day2.get_pending_tasks()) == 2
+        titles_day2 = [t.title for t in day2.get_pending_tasks()]
+        assert "Tâche 1 à faire" in titles_day2
+        assert "Tâche 3 à faire" in titles_day2
+
+    def test_monthly_task_migration_nominal(self) -> None:
+        """Migration d'une tâche d'un mois vers le mois suivant."""
+        nov_log = MonthlyLog(year=2026, month=11)
+        dec_log = MonthlyLog(year=2026, month=12)
+
+        m_task = nov_log.add_task(title="Projet long terme", signifier="!")
+        new_task = nov_log.migrate_task(m_task.id, dec_log)
+
+        assert m_task.status == TaskStatus.MIGRATED
+        assert new_task.status == TaskStatus.TO_DO
+        assert new_task.title == "Projet long terme"
+        assert new_task.signifier == Signifier.IDEA
+        assert new_task.migrated_from_id == m_task.id
+        assert m_task.migrated_to_id == new_task.id
+
+    def test_bullet_journal_coordination(self) -> None:
+        """BulletJournal gère la création automatique et la migration transversale."""
+        journal = BulletJournal(owner="Sheryne")
+        today = date(2026, 11, 7)
+        tomorrow = date(2026, 11, 8)
+
+        t = journal.add_task(title="Préparer le rendu", log_date=today)
+        assert t.is_pending is True
+
+        # Migration via la méthode globale du journal
+        migrated_task = journal.migrate_task(t.id, target_date=tomorrow)
+        assert t.status == TaskStatus.MIGRATED
+        assert migrated_task.status == TaskStatus.TO_DO
+        assert migrated_task.log_date == tomorrow
+
+        # Recherche de la tâche migrée dans le MonthlyLog
+        m_task = journal.add_monthly_task(title="Tâche mensuelle novembre", year=2026, month=11)
+        container, entry = journal.find_entry(m_task.id)
+        assert isinstance(container, MonthlyLog)
+        assert entry.id == m_task.id
+
+        # Migration groupée vers le lendemain
+        journal.add_task(title="Autre tâche", log_date=today)
+        migrated_batch = journal.migrate_day_to_next(from_date=today)
+        assert len(migrated_batch) == 1
