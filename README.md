@@ -71,22 +71,36 @@ Bullet-Journal-Python/
 
 ## Installation & Environnement
 
-### Avec un environnement virtuel (`venv`)
+Le projet s'appuie sur la chaîne d'outils standard et officielle de Python :
+- **`venv`** : Crée un environnement virtuel isolé (`.venv/`) afin que les bibliothèques installées ne polluent pas votre système d'exploitation et n'entrent pas en conflit avec d'autres projets.
+- **`pip`** : Gestionnaire de paquets officiel qui télécharge et installe les outils depuis PyPI.
+- **`pyproject.toml`** : Standard moderne (PEP 517 / 621) déclarant les métadonnées de la bibliothèque et permettant l'installation directe en mode éditable.
+- **`requirements.txt`** : Fichier recensant les dépendances nécessaires au développement et aux tests.
+
+### 1. Création et activation de l'environnement virtuel (`venv`)
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate  # Sur Linux/macOS
-# ou: .venv\Scripts\activate sous Windows
+# Créer l'environnement virtuel .venv
+# - Sur Windows (PowerShell / CMD) :
+python -m venv .venv --clear
+# (ou : py -m venv .venv --clear)
 
-pip install -r requirements.txt
-pip install -e . --no-build-isolation
+# - Sur Linux / macOS :
+python3 -m venv .venv
+
+# Activer l'environnement :
+# - Sur Windows (PowerShell) :
+.venv\Scripts\Activate.ps1
+# - Sur Windows (cmd.exe) :
+.venv\Scripts\activate.bat
+# - Sur Linux / macOS :
+source .venv/bin/activate
 ```
 
-### Avec Anaconda / Miniconda
+### 2. Installation des dépendances et du package
 
 ```bash
-conda create -n bujo python=3.12 -y
-conda activate bujo
+pip install --upgrade pip
 pip install -r requirements.txt
 pip install -e . --no-build-isolation
 ```

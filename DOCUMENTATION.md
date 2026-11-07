@@ -12,7 +12,8 @@ Ce document est un **guide de référence complet** conçu pour vous aider à co
 4. [Le Cycle de Vie d'une Tâche et les Règles Métier](#4-le-cycle-de-vie-dune-tâche-et-les-règles-métier)
 5. [Le Système de Journalisation (Logs)](#5-le-système-de-journalisation-logs)
 6. [Chronologie des Étapes de Travail (Niveau 1)](#6-chronologie-des-étapes-de-travail-niveau-1)
-7. [Foire Aux Questions pour la Soutenance](#7-foire-aux-questions-pour-la-soutenance)
+7. [Architecture de l'Environnement et Outils (venv, pip, pyproject.toml)](#7-architecture-de-lenvironnement-et-outils-venv-pip-pyprojecttoml)
+8. [Foire Aux Questions pour la Soutenance](#8-foire-aux-questions-pour-la-soutenance)
 
 ---
 
@@ -226,7 +227,54 @@ Pour construire ce Niveau 1, la démarche a suivi les bonnes pratiques du génie
 
 ---
 
-## 7. Foire Aux Questions pour la Soutenance
+## 7. Architecture de l'Environnement et Outils (venv, pip, pyproject.toml)
+
+Pour garantir la portabilité, l'isolation et la reproductibilité du projet sans dépendances externes lourdes, la chaîne d'outils s'articule autour des standards officiels de Python :
+
+```text
++-------------------------------------------------------------------------------+
+|                                MACHINE HÔTE                                   |
+|                                                                               |
+|  +-------------------------------------------------------------------------+  |
+|  |                 ENVIRONNEMENT VIRTUEL : venv (.venv/)                   |  |
+|  |                                                                         |  |
+|  |   - Interpréteur Python isolé (Scripts/python.exe ou bin/python)        |  |
+|  |   - Isolation complète : aucun conflit avec les packages de l'OS       |  |
+|  |                                                                         |  |
+|  |   +-----------------------------------------------------------------+   |  |
+|  |   |                  GESTIONNAIRE DE PAQUETS : pip                  |   |  |
+|  |   |                                                                 |   |  |
+|  |   |   1. Télécharge & installe depuis PyPI                          |   |  |
+|  |   |      via `requirements.txt` :                                   |   |  |
+|  |   |      └── pytest, flake8, pydocstyle, setuptools                 |   |  |
+|  |   |                                                                 |   |  |
+|  |   |   2. Installe le projet en mode éditable                        |   |  |
+|  |   |      via `pip install -e .` en s'appuyant sur                   |   |  |
+|  |   |      `pyproject.toml` (standard PEP 517 / 621)                  |   |  |
+|  |   +-----------------------------------------------------------------+   |  |
+|  |                                                                         |  |
+|  |   +-----------------------------------------------------------------+   |  |
+|  |   |                      MOTEUR DE BUILD : setuptools               |   |  |
+|  |   |   - Analyse la structure `src/bujo`                             |   |  |
+|  |   |   - Génère les métadonnées et connecte le package en direct     |   |  |
+|  |   +-----------------------------------------------------------------+   |  |
+|  +-------------------------------------------------------------------------+  |
++-------------------------------------------------------------------------------+
+```
+
+### Rôles respectifs de chaque outil :
+
+| Outil / Fichier | Rôle précis | Pourquoi ce choix ? |
+| :--- | :--- | :--- |
+| **`venv`** | **Gestionnaire d'environnement virtuel** : crée un dossier `.venv/` isolé contenant son propre interpréteur Python et son propre dossier `site-packages`. | Module natif standard de Python (zéro installation externe nécessaire, ultra-léger face aux plusieurs Go d'Anaconda). |
+| **`pip`** | **Gestionnaire de paquets (*Package Installer*)** : télécharge, résout et installe les bibliothèques depuis l'index officiel PyPI. | Outil de référence universel de Python pour installer des packages. |
+| **`requirements.txt`** | **Liste déclarative des dépendances de développement** : liste les outils tiers nécessaires (`pytest`, `flake8`, `pydocstyle`, `setuptools`). | Permet à tout développeur d'installer tous les outils en une seule commande : `pip install -r requirements.txt`. |
+| **`pyproject.toml`** | **Configuration standard moderne (PEP 517/518/621)** : définit les métadonnées du projet (nom, version, auteur, version Python minimale) et configure les outils (`pytest`). | Remplace les anciens fichiers `setup.py` monolithiques selon les recommandations actuelles de la *Python Packaging Authority (PyPA)*. |
+| **`setuptools`** | **Moteur de construction (*Build Backend*)** : lit `pyproject.toml`, découvre les packages du dossier `src/` et produit le lien éditable (`pip install -e .`). | Backend stable et éprouvé pour la création et distribution de packages Python. |
+
+---
+
+## 8. Foire Aux Questions pour la Soutenance
 
 ### Q1 : Pourquoi utiliser des UUID pour les identifiants plutôt que le nom de la tâche ?
 > **Réponse :** Dans un Bullet Journal, une personne peut très bien avoir deux tâches portant le même nom (par exemple *"Faire du sport"* le matin et le soir, ou migrer la même tâche de jour en jour). Si on utilisait le nom comme identifiant, supprimer ou terminer une tâche risquerait d'altérer l'autre. L'UUID garantit une unicité absolue sans collision.
@@ -254,4 +302,8 @@ Pour construire ce Niveau 1, la démarche a suivi les bonnes pratiques du génie
 > python3 run_bujo.py
 > ```
 > Le menu interactif permet d'ajouter des tâches, de les cocher, de les abandonner ou de les supprimer directement dans le terminal.
+
+### Q6 : Quel gestionnaire d'environnement virtuel avez-vous choisi et pourquoi ?
+> **Réponse :** Le projet utilise exclusivement **`venv`** (le module standard natif de Python) avec **`pip`**. Contrairement à Anaconda qui nécessite une installation externe lourde, `venv` est directement intégré à Python, portable, sans dépendance tierce, et représente le standard recommandé par la *Python Packaging Authority (PyPA)* pour les bibliothèques logicielles.
+
 
