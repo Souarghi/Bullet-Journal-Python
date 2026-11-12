@@ -1,6 +1,9 @@
+import pytest
+import uuid
+
 from bujo.entries import Task, TaskState
 from bujo.journal import DailyLog
-
+from bujo.exceptions import EntryNotFoundError
 def test_add_and_list_pending_tasks() -> None:
     """
     Vérifie que l'on peut ajouter une tâche et la retrouver dans les tâches en cours.
@@ -32,3 +35,14 @@ def test_complete_task_remove_it_from_pending() -> None:
 
     assert task1.state == TaskState.DONE
     assert len(journal.get_pending_tasks()) == 0
+
+def test_remove_nonexistent_entry_raises_error():
+    """
+    Vérifie qu'une erreur est bien levée si on supprime un ID inexistant.
+    :return:
+    """
+    journal = DailyLog()
+    fake_id = uuid.uuid4()
+
+    with pytest.raises(EntryNotFoundError):
+        journal.remove_entry(fake_id)
