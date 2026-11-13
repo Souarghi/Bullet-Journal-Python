@@ -11,14 +11,18 @@ console = Console()
 
 
 def attendre_et_nettoyer():
-    """Met le programme en pause pour laisser le temps de lire, puis nettoie l'écran."""
+    """
+    Met le programme en pause, puis nettoie l'écran.
+    """
     console.print("\n[dim italic]Appuie sur Entrée pour retourner au menu...[/dim italic]")
-    input()  # Attend que l'utilisateur appuie sur Entrée
+    input()
     console.clear()
 
 
 def afficher_menu():
-    """Affiche le menu principal stylisé."""
+    """
+    Affiche le menu principal.
+    """
     menu_table = Table(show_header=False, box=None)
     menu_table.add_column("Option", style="bold cyan")
     menu_table.add_column("Action", style="white")
@@ -39,12 +43,9 @@ def afficher_menu():
 
 def main():
     journal = DailyLog()
-
-    # Nettoyage initial au lancement
     console.clear()
 
     while True:
-        # On affiche le message de bienvenue à chaque rafraîchissement du menu
         console.print(Panel("[bold cyan]Bienvenue dans ton environnement de productivité.[/bold cyan]", expand=False))
         afficher_menu()
 
@@ -57,7 +58,6 @@ def main():
             journal.add_entry(nouvelle_tache)
             console.print(f"[green]✔ Tâche '{nom_tache}' ajoutée avec succès ![/green]")
 
-            # On met en pause avant de clear l'écran
             attendre_et_nettoyer()
 
         elif choix == "2":
