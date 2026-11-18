@@ -10,7 +10,7 @@ Documentation de la bibliothèque Bullet Journal
 Bienvenue dans la documentation de ``bujo``, une bibliothèque Python de
 gestion d'un journal personnel selon la méthode du Bullet Journal.
 Le code source, les tests et le pipeline CI se trouvent dans le dépôt
-GitLab du projet.
+GitHub du projet.
 
 Modules
 -------

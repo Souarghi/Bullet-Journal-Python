@@ -38,7 +38,6 @@ Bullet-Journal-PY/
 │   └── _build/                   # HTML généré (ignoré par Git)
 ├── .github/workflows/ci.yml      # pipeline GitHub Actions : PEP 8, docstrings,
 │                                 #   tests + couverture > 90 %
-├── .gitlab-ci.yml                # pipeline GitLab CI (dépôt interne) : flake8, pytest
 ├── setup.cfg                     # configuration de flake8 et pytest
 ├── Dockerfile                    # image Docker de l'application
 ├── requirements.txt              # dépendances (tests, lint, couverture, docs)
@@ -190,9 +189,8 @@ chaque push et chaque pull request) vérifie :
 3. l'exécution de tous les tests unitaires sous `coverage`, avec un
    seuil minimal de 90 % (`--fail-under=90`).
 
-Un pipeline GitLab CI équivalent (`.gitlab-ci.yml`) tourne sur le dépôt
-interne GitLab. La configuration des outils (flake8, pytest) est
-centralisée dans `setup.cfg`.
+La configuration des outils (flake8, pytest) est centralisée dans
+`setup.cfg`.
 
 # État d'avancement
 
