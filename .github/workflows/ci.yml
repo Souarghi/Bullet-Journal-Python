@@ -1,0 +1,32 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Installation des dépendances
+        run: pip install --quiet -r requirements.txt
+      - name: Respect de PEP 8 (flake8)
+        run: flake8 bujo tests tools
+      - name: Présence des docstrings
+        run: python tools/check_docstrings.py bujo
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Installation des dépendances
+        run: pip install --quiet -r requirements.txt
+      - name: Tests unitaires et couverture (>90 %)
+        run: |
+          python -m coverage run -m pytest -v
+          python -m coverage report --show-missing --fail-under=90

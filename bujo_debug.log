@@ -1,0 +1,11 @@
+2026-11-18 09:18:16,938 [INFO] bujo: Démarrage du Bullet Journal.
+2026-11-18 09:18:16,938 [DEBUG] bujo: Entrée 6f1e2566-98c3-4911-8a1a-7fd245448493 (Faire les courses) ajoutée au journal « Mon journal ».
+2026-11-18 09:18:16,938 [INFO] bujo: Fin du programme.
+2026-11-18 09:19:02,653 [INFO] bujo: Démarrage du Bullet Journal.
+2026-11-18 09:19:02,653 [DEBUG] bujo: Entrée e02146b9-0182-49a5-b069-7ca6f1b1778c (Faire les courses) ajoutée au journal « Mon journal ».
+2026-11-18 09:19:02,653 [DEBUG] bujo: Tâche e02146b9-0182-49a5-b069-7ca6f1b1778c terminée.
+2026-11-18 09:19:02,654 [INFO] bujo: Fin du programme.
+2026-11-18 09:50:17,384 [INFO] bujo: Démarrage du Bullet Journal.
+2026-11-18 09:50:17,385 [DEBUG] bujo: Entrée edce603b-8cf6-45e1-8b9a-daf18d649615 (Faire les courses) ajoutée au journal « Mon journal ».
+2026-11-18 09:50:17,388 [DEBUG] bujo: Entrée bd36e514-c15f-4651-bda9-f7b490031749 (Ranger le garage) ajoutée au journal « Mon journal ».
+2026-11-18 09:50:17,392 [ERROR] bujo: Entrée introuvable : zzz.
