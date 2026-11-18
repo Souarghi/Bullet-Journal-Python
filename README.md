@@ -23,6 +23,8 @@ Bullet-Journal-PY/
 │   │                             #   InvalidSignifierError, PersistenceError
 │   └── cli.py                    # affichage / CLI : main(), MENU, show_choice(),
 │                                 #   take_choice(), clear_screen()
+├── tools/                        # outils de la qualité
+│   └── check_docstrings.py       # contrôle CI : docstrings de toute l'API publique
 ├── tests/                        # tests unitaires pytest
 │   ├── test_entry.py             # cycle de vie des tâches, cas d'erreur du modèle
 │   ├── test_journal.py           # ajout, suppression, recherche, transitions, entrées du jour
@@ -34,7 +36,9 @@ Bullet-Journal-PY/
 │   ├── _static/                  # ressources statiques (répertoire réservé)
 │   ├── _templates/               # templates de thèmes (répertoire réservé)
 │   └── _build/                   # HTML généré (ignoré par Git)
-├── .gitlab-ci.yml                # pipeline CI : flake8, pytest
+├── .github/workflows/ci.yml      # pipeline GitHub Actions : PEP 8, docstrings,
+│                                 #   tests + couverture > 90 %
+├── .gitlab-ci.yml                # pipeline GitLab CI (dépôt interne) : flake8, pytest
 ├── setup.cfg                     # configuration de flake8 et pytest
 ├── Dockerfile                    # image Docker de l'application
 ├── requirements.txt              # dépendances (tests, lint, couverture, docs)
@@ -135,7 +139,7 @@ journal = load_journal("journal.json")
 ### Journalisation (logging)
 
 Chaque exécution alimente deux fichiers de log créés dans le répertoire
-courant (ignorés par Git via `.gitignore`) :
+courant (livrés avec le dépôt comme exemples de sortie) :
 
 - `bujo_debug.log` : toutes les actions (DEBUG et plus)
 - `bujo_error.log` : uniquement les erreurs (ERROR et CRITICAL)
@@ -155,7 +159,14 @@ Les tests unitaires (`tests/test_entry.py`, `tests/test_journal.py`,
 entrées, le journal, la persistance et le menu : cycle de vie des tâches,
 signifiants, transitions interdites, aller-retour JSON, cas d'erreur,
 recherche par nom. La couverture est mesurée par `coverage` et imposée
-par le pipeline CI.
+par le pipeline CI (`--fail-under=90`) : 102 tests, 99 % de couverture.
+
+La présence des docstrings sur les modules, classes et fonctions publiques
+de `bujo/` est vérifiée par `tools/check_docstrings.py` :
+
+```bash
+python tools/check_docstrings.py bujo
+```
 
 ## Documentation
 
@@ -170,15 +181,18 @@ Puis ouvrir `docs/_build/html/index.html`.
 
 ## CI/CD
 
-Le pipeline GitLab CI (`.gitlab-ci.yml`, exécuté à chaque push) vérifie :
+Le pipeline **GitHub Actions** (`.github/workflows/ci.yml`, exécuté à
+chaque push et chaque pull request) vérifie :
 
 1. le respect de PEP 8 (`flake8`) ;
-2. l'exécution de tous les tests unitaires sous `coverage`, avec un
-   seuil minimal de couverture (`--fail-under`) et le pourcentage
-   affiché dans GitLab.
+2. la présence des docstrings sur toute l'API publique
+   (`tools/check_docstrings.py`) ;
+3. l'exécution de tous les tests unitaires sous `coverage`, avec un
+   seuil minimal de 90 % (`--fail-under=90`).
 
-La configuration des outils (flake8, pytest) est centralisée dans
-`setup.cfg`.
+Un pipeline GitLab CI équivalent (`.gitlab-ci.yml`) tourne sur le dépôt
+interne GitLab. La configuration des outils (flake8, pytest) est
+centralisée dans `setup.cfg`.
 
 # État d'avancement
 
@@ -193,27 +207,30 @@ La configuration des outils (flake8, pytest) est centralisée dans
 - ✅ Trois types d'entrées : tâches, événements (date/heure), notes
 - ✅ Identifiant unique par entrée, recherche par nom secondaire
 - ✅ POO : classe abstraite `Entry`, héritage, encapsulation
-- ✅ Type hinting, PEP 8, commentaires au-dessus des modules/classes/méthodes
+- ✅ Type hinting, PEP 8, docstrings sur les modules, classes et méthodes
 - ✅ Exceptions personnalisées héritant de `BujoError` (entrée introuvable,
   nom vide, date invalide, transition d'état interdite, signifiant inconnu,
   erreur de persistance)
 - ✅ Logs debug + erreurs dédiés
 - ✅ Persistance JSON : sauvegarde et chargement à l'identique
 - ✅ Transitions complètes dans le menu : terminer, migrer, planifier, abandonner
-- ✅ Tests pytest (cycle de vie, cas d'erreur, persistance) et couverture intégrée à la CI
+- ✅ Tests pytest (cycle de vie, cas d'erreur, persistance) et couverture
+  (99 %) imposée par la CI à chaque push
 - ✅ Documentation Sphinx
-- ✅ Pipeline CI à chaque push
+- ✅ Pipeline CI GitHub Actions à chaque push (PEP 8, docstrings, tests)
 - ✅ Environnement reproductible (Docker + requirements.txt)
 
 ## Perspective d'amélioration
 
-Toutes les fonctionnalités du niveau 1 et la quasi-totalité des exigences
-techniques sont livrées (voir le statut ci-dessus). Il reste :
+Toutes les fonctionnalités du niveau 1 et les exigences techniques sont
+livrées (voir le statut ci-dessus). Il reste :
 
 ### Exigences techniques
-1. Workflow Git avec **branches et Merge Requests** (les commits
-   explicites sur la branche principale sont déjà en place)
+1. Étendre le workflow Git avec **branches et Pull Requests** pour le
+   travail en équipe (les commits explicites et la CI à chaque push sont
+   déjà en place)
 
 ### Livrable :
-Dépôt GitLab du projet (code source, documentation Sphinx, fichiers de
-logs, tests unitaires, pipeline CI).
+Dépôt **GitHub public** du projet (code source, documentation Sphinx,
+fichiers de logs, tests unitaires, pipeline CI/CD GitHub Actions), dont
+le lien est envoyé au formateur.
